@@ -68,7 +68,7 @@ public class GameController : MonoBehaviour
         {
             float angle = i * Mathf.PI * 2 / numTeammates;
             Vector3 teammatePosition = new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0f);
-            GameObject teammate = Instantiate(teammatePrefab, transform.position + teammatePosition, Quaternion.identity);
+            GameObject teammate = Instantiate(teammatePrefab, transform.position + teammatePosition, Quaternion.identity, transform.parent);
             teammates.Add(teammate.GetComponent<TeamMate>());
         }
 
