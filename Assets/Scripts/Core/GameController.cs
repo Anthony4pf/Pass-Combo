@@ -8,7 +8,6 @@ public class GameController : MonoBehaviour
     [SerializeField] private GameObject ball;
     [SerializeField] private GameObject teammatePrefab;
 
-    [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float radius = 5f;
     [SerializeField] private float waitForFeedbackDelay = 0.2f;
     private Vector3 ballOriginalPosition; 
@@ -98,66 +97,99 @@ public class GameController : MonoBehaviour
     }
 
     private void MoveBallToPosition(Vector2 screenPosition)
+{
+    if (isWaitingForNextTarget) return;
+    Vector3 worldPosition = Camera.main.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, Camera.main.nearClipPlane));
+    worldPosition.z = ball.transform.position.z;
+
+    // Find the closest teammate to the tapped position
+    TeamMate tappedTeammate = null;
+    float closestDistance = float.MaxValue;
+
+    foreach (TeamMate teammate in teammates)
     {
-        if (isWaitingForNextTarget) return;
-        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, Camera.main.nearClipPlane));
-        worldPosition.z = ball.transform.position.z;
-
-        // Find the closest teammate to the tapped position
-        TeamMate tappedTeammate = null;
-        float closestDistance = float.MaxValue;
-
-        foreach (TeamMate teammate in teammates)
+        float distance = Vector3.Distance(worldPosition, teammate.transform.position);
+        if (distance < closestDistance)
         {
-            float distance = Vector3.Distance(worldPosition, teammate.transform.position);
-            if (distance < closestDistance)
-            {
-                closestDistance = distance;
-                tappedTeammate = teammate;
-            }
-        }
-
-        // Only register a pass if the tap is close enough to a teammate
-        if (tappedTeammate != null && closestDistance <= maxTapDistance)
-        {
-            StartCoroutine(MoveBallToTarget(tappedTeammate.transform.position));
-
-            // Check if the tapped teammate is the current target
-            if (tappedTeammate == currentTarget)
-            {
-                float reactionTime = Time.time - reactionStartTime;
-                Debug.Log("Correct pass! Reaction time: " + reactionTime + " seconds");
-                score++;
-            }
-            else
-            {
-                score -= penalty;
-                Debug.Log("Incorrect pass! Score: " + score);
-            }
+            closestDistance = distance;
+            tappedTeammate = teammate;
         }
     }
 
-    private IEnumerator MoveBallToTarget(Vector3 targetPosition)
+    StartCoroutine(MoveBallToTarget(worldPosition));
+
+    if (tappedTeammate != null && closestDistance <= maxTapDistance)
     {
-        isWaitingForNextTarget = true;
-        
-        float duration = 0.3f;
-        Vector3 startPosition = ball.transform.position;
+        // Tapped near a teammate
+        if (tappedTeammate == currentTarget)
+        {
+            float reactionTime = Time.time - reactionStartTime;
+            Debug.Log("Correct pass! Reaction time: " + reactionTime + " seconds");
+            score++;
+        }
+        else
+        {
+            score -= penalty;
+            Debug.Log("Incorrect pass! Score: " + score);
+        }
+    }
+    else
+    {
+        // Tapped empty space
+        score -= penalty;
+        Debug.Log("Missed! No teammate at tapped position. Score: " + score);
+    }
+}
+
+private IEnumerator MoveBallToTarget(Vector3 targetPosition)
+{
+    isWaitingForNextTarget = true;
+
+    bool isLeftPass = targetPosition.x < ballOriginalPosition.x;
+
+    // Flip the player to face the direction of the pass
+    StartCoroutine(FlipPlayer(isLeftPass));
+
+    // Set ball start position based on direction
+    Vector3 startPosition = isLeftPass
+        ? new Vector3(-Mathf.Abs(ballOriginalPosition.x), ballOriginalPosition.y, ballOriginalPosition.z)
+        : ballOriginalPosition;
+
+    float duration = 0.3f;
+    float elapsed = 0f;
+
+    while (elapsed < duration)
+    {
+        ball.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsed / duration);
+        elapsed += Time.deltaTime;
+        yield return null;
+    }
+
+    ball.transform.position = targetPosition;
+    Debug.Log("Pass completed!");
+
+    yield return new WaitForSeconds(waitForFeedbackDelay);
+    ball.transform.position = startPosition;
+
+    targetTime = 0f;
+    SelectRandomTarget();
+}
+
+    private IEnumerator FlipPlayer(bool faceLeft)
+    {
+        float duration = 0.1f;
         float elapsed = 0f;
+        float startScaleX = transform.localScale.x;
+        float endScaleX = faceLeft ? -Mathf.Abs(startScaleX) : Mathf.Abs(startScaleX);
 
         while (elapsed < duration)
         {
-            ball.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsed / duration);
+            float t = elapsed / duration;
+            float newScaleX = Mathf.Lerp(startScaleX, endScaleX, t);
+            transform.localScale = new Vector3(newScaleX, transform.localScale.y, transform.localScale.z);
             elapsed += Time.deltaTime;
             yield return null;
         }
-        ball.transform.position = targetPosition;
-        Debug.Log("Pass completed!");
-        
-        yield return new WaitForSeconds(waitForFeedbackDelay); // Wait for a moment before resetting the ball position
-        ball.transform.position = ballOriginalPosition;
-
-        targetTime = 0f;
-        SelectRandomTarget();
+        transform.localScale = new Vector3(endScaleX, transform.localScale.y, transform.localScale.z);
     }
 }

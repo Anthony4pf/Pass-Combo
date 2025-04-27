@@ -27,7 +27,7 @@ Transform:
   m_GameObject: {fileID: 2866859308376602725}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 3, y: 3, z: 3}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -103,6 +103,5 @@ MonoBehaviour:
   inputReader: {fileID: 11400000, guid: e2bbc1d237f484f4f92201335f06a39c, type: 2}
   ball: {fileID: 0}
   teammatePrefab: {fileID: 6499356547416577684, guid: 43757b014977fb8458fed440cc7d4174, type: 3}
-  moveSpeed: 5
   radius: 5
   waitForFeedbackDelay: 0.2
