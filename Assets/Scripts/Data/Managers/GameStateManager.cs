@@ -45,9 +45,7 @@ public class GameStateManager : SingletonScriptableObject<GameStateManager>
 
     public void Init()
     {
-        GameStateManager.EconomyManager.InitializeValues();
-      
-        
+        EconomyManager.InitializeValues();
     }
 
 }

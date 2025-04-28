@@ -5,18 +5,16 @@ using System.Collections.Generic;
 public class GameController : MonoBehaviour
 {
     [SerializeField] private InputReader inputReader;
+    [SerializeField] private DifficultySO difficultySO;
     [SerializeField] private GameObject ball;
     [SerializeField] private GameObject teammatePrefab;
 
-    [SerializeField] private float radius = 5f;
     [SerializeField] private float waitForFeedbackDelay = 0.2f;
     private Vector3 ballOriginalPosition; 
 
     private List<TeamMate> teammates = new List<TeamMate>();
     private TeamMate currentTarget;
 
-    private int numTeammates = 6;
-    private float targetDuration = 1f;
     private float reactionStartTime;
     private float targetTime = 0f;
     private int lastTargetIndex = -1;
@@ -24,7 +22,6 @@ public class GameController : MonoBehaviour
     private bool isWaitingForNextTarget = false;
 
     private int score = 0;
-    private int penalty = 0;
 
     private void OnEnable()
     {
@@ -53,7 +50,7 @@ public class GameController : MonoBehaviour
         if (currentTarget != null && !isWaitingForNextTarget)
         {
             targetTime += Time.deltaTime;
-            if (targetTime >= targetDuration)
+            if (targetTime >= difficultySO.TargetDuration)
             {
                 currentTarget.ResetHighlight();
                 targetTime = 0f;
@@ -63,19 +60,26 @@ public class GameController : MonoBehaviour
     }
 
     private void SpawnTeammates()
+{
+    Vector3 center = transform.position;
+    for (int i = 0; i < difficultySO.NumberOfTeammates; i++)
     {
-        for (int i = 0; i < numTeammates; i++)
-        {
-            float angle = i * Mathf.PI * 2 / numTeammates;
-            Vector3 teammatePosition = new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0f);
-            GameObject teammate = Instantiate(teammatePrefab, transform.position + teammatePosition, Quaternion.identity, transform.parent);
-            teammates.Add(teammate.GetComponent<TeamMate>());
-        }
+        float angle = i * Mathf.PI * 2 / difficultySO.NumberOfTeammates;
+        Vector3 teammatePosition = new Vector3(Mathf.Cos(angle) * difficultySO.Radius, Mathf.Sin(angle) * difficultySO.Radius, 0f);
+        GameObject teammate = Instantiate(teammatePrefab, center + teammatePosition, Quaternion.identity, transform.parent);
 
-        Timer.Register(1f, ()=>{
-            SelectRandomTarget();
-        });
+        // Rotate to face the center
+        Vector3 directionToCenter = (center - teammate.transform.position).normalized;
+        float angleToCenter = Mathf.Atan2(directionToCenter.y, directionToCenter.x) * Mathf.Rad2Deg;
+        teammate.transform.rotation = Quaternion.AngleAxis(angleToCenter, Vector3.forward);
+
+        teammates.Add(teammate.GetComponent<TeamMate>());
     }
+
+    Timer.Register(1f, () => {
+        SelectRandomTarget();
+    });
+}
 
     private void SelectRandomTarget()
     {
@@ -125,18 +129,18 @@ public class GameController : MonoBehaviour
         {
             float reactionTime = Time.time - reactionStartTime;
             Debug.Log("Correct pass! Reaction time: " + reactionTime + " seconds");
-            score++;
+            score += difficultySO.ScoreIncrement;
         }
         else
         {
-            score -= penalty;
+            score -= difficultySO.Penalty;
             Debug.Log("Incorrect pass! Score: " + score);
         }
     }
     else
     {
         // Tapped empty space
-        score -= penalty;
+        score -= difficultySO.Penalty;
         Debug.Log("Missed! No teammate at tapped position. Score: " + score);
     }
 }
