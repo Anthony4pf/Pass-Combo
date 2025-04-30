@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 public class UIManager : MonoBehaviour
 {
     [Header("Score Board")]
@@ -8,6 +9,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI scoreText;
 
     [Header("Win Screen")]
+    [SerializeField] private List<Image> Stars = new List<Image>();
+    [SerializeField] private Sprite starSprite;
     [SerializeField] private TextMeshProUGUI finalPointsText;
     [SerializeField] private TextMeshProUGUI averageReactionTimeText;
     [SerializeField] private TextMeshProUGUI comboBonusText;
@@ -20,11 +23,6 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameEvent OnGameWin;
     [SerializeField] private GameEvent onGameLose;
 
-
-    private void Start()
-    {
-        
-    }
     private void OnEnable()
     {
         GameController.OnGameEnd += UpdateEndGameUI;
@@ -64,11 +62,28 @@ public class UIManager : MonoBehaviour
 
         if (isWin)
         {
+            UpdateStars(finalPoints, targetPoints);
             OnGameWin?.Raise();
         }
         else
         {
             onGameLose?.Raise();
+        }
+    }
+
+    private void UpdateStars(int finalPoints, int targetPoints)
+    {
+        int starsEarned = 0;
+        if (finalPoints >= targetPoints)
+            starsEarned = 1;
+        if (finalPoints >= targetPoints + 2)
+            starsEarned = 2;
+        if (finalPoints >= targetPoints + 5)
+            starsEarned = 3;
+
+        for (int i = 0; i < starsEarned; i++)
+        {
+            Stars[i].sprite = starSprite;
         }
     }
 }
