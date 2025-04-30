@@ -21,6 +21,10 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameEvent onGameLose;
 
 
+    private void Start()
+    {
+        
+    }
     private void OnEnable()
     {
         GameController.OnGameEnd += UpdateEndGameUI;

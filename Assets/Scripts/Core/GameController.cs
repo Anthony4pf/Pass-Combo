@@ -30,6 +30,7 @@ public class GameController : MonoBehaviour
     private float averageReactionTime;
     private float totalReactionTime = 0f;
     private int reactionCount = 0;
+    private int streak = 0;
 
     [SerializeField] private int targetPoints = 10;
     [SerializeField] private float gameDuration = 30f;
@@ -58,6 +59,11 @@ public class GameController : MonoBehaviour
         {
             inputReader.OnTapEvent -= MoveBallToPosition;
         }
+    }
+
+    private void Awake()
+    {
+        //difficultySO = GameStateManager.LevelManager.GetLevelDifficultyData();
     }
 
     private void Start()
@@ -111,6 +117,7 @@ public class GameController : MonoBehaviour
     {
         if (score >= targetPoints)
         {
+            GameStateManager.LevelManager.CurrentLevel++;
             OnGameEnd?.Invoke(score, comboBonus, averageReactionTime, targetPoints, true);
         }
         else
@@ -205,11 +212,21 @@ public class GameController : MonoBehaviour
                 totalReactionTime += reactionTime;
                 reactionCount++;
                 averageReactionTime = totalReactionTime / reactionCount;
+                streak++;
+
+                //Track Combo Streak
+                if (difficultySO.HasComboBonus && streak >= difficultySO.ComboPasses)
+                {
+                    comboBonus += difficultySO.ComboBonus; // Add combo bonus
+                    streak = 0; // Reset streak
+                    Debug.Log("Combo bonus awarded! Current combo bonus: " + comboBonus);
+                }
             }
             else
             {
                 score -= difficultySO.Penalty;
                 if (score < 0) score = 0;
+                streak = 0;
                 Debug.Log("Incorrect pass! Score: " + score);
             }
         }
@@ -218,43 +235,44 @@ public class GameController : MonoBehaviour
             // Tapped empty space
             score -= difficultySO.Penalty;
             if (score < 0) score = 0;
+            streak = 0;
             Debug.Log("Missed! No teammate at tapped position. Score: " + score);
         }
     }
 
-private IEnumerator MoveBallToTarget(Vector3 targetPosition)
-{
-    isWaitingForNextTarget = true;
-
-    bool isLeftPass = targetPosition.x < ballOriginalPosition.x;
-
-    // Flip the player to face the direction of the pass
-    StartCoroutine(FlipPlayer(isLeftPass));
-
-    // Set ball start position based on direction
-    Vector3 startPosition = isLeftPass
-        ? new Vector3(-Mathf.Abs(ballOriginalPosition.x), ballOriginalPosition.y, ballOriginalPosition.z)
-        : ballOriginalPosition;
-
-    float duration = 0.3f;
-    float elapsed = 0f;
-
-    while (elapsed < duration)
+    private IEnumerator MoveBallToTarget(Vector3 targetPosition)
     {
-        ball.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsed / duration);
-        elapsed += Time.deltaTime;
-        yield return null;
+        isWaitingForNextTarget = true;
+
+        bool isLeftPass = targetPosition.x < ballOriginalPosition.x;
+
+        // Flip the player to face the direction of the pass
+        StartCoroutine(FlipPlayer(isLeftPass));
+
+        // Set ball start position based on direction
+        Vector3 startPosition = isLeftPass
+            ? new Vector3(-Mathf.Abs(ballOriginalPosition.x), ballOriginalPosition.y, ballOriginalPosition.z)
+            : ballOriginalPosition;
+
+        float duration = 0.3f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            ball.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsed / duration);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        ball.transform.position = targetPosition;
+        Debug.Log("Pass completed!");
+
+        yield return new WaitForSeconds(waitForFeedbackDelay);
+        ball.transform.position = startPosition;
+
+        targetTime = 0f;
+        SelectRandomTarget();
     }
-
-    ball.transform.position = targetPosition;
-    Debug.Log("Pass completed!");
-
-    yield return new WaitForSeconds(waitForFeedbackDelay);
-    ball.transform.position = startPosition;
-
-    targetTime = 0f;
-    SelectRandomTarget();
-}
 
     private IEnumerator FlipPlayer(bool faceLeft)
     {

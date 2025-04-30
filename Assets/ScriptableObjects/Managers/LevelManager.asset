@@ -12,3 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 55dcbcd3c86c7bd40bfc890153dd1380, type: 3}
   m_Name: LevelManager
   m_EditorClassIdentifier: 
+  EasyDifficulty: {fileID: 11400000, guid: 2f7fcd84d3a89a84681b8637c1100c95, type: 2}
+  MediumDifficulty: {fileID: 11400000, guid: 6f069bfb275788a42b59336452617137, type: 2}
+  HardDifficulty: {fileID: 11400000, guid: 7eeed3a5672e7e54cb75564004bf10a5, type: 2}

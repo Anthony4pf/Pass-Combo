@@ -12,27 +12,6 @@ public class EconomyManager : ScriptableObject
     [Label("Total amount accumulated")] [ReadOnly] [SerializeField] double m_TotalMoney;
     
     public delegate void OnMoneyChanged(double newAmount);
-    public static OnMoneyChanged m_onMoneyChanged;
-
-   
-    [BoxGroup("SO Events"), Required] public FloatEvent onMoneyChanged;
-    
-    [Space, BoxGroup("SO Events"), Required] public FloatEvent onTotalMoneyIncreased;
-    
-    
-
-
-    [BoxGroup("Config")]
-    [Tooltip("The amount of money the player starts the game with")] public float startingMoney = 80f;
-
-    
-    [BoxGroup("Level Amount")]
-    [Tooltip("Money earned after the player has completed a level")] public float completedLevelReward = 200;
-
-
- 
-    
-
 
     // Private Variables
     public double Money
@@ -50,8 +29,6 @@ public class EconomyManager : ScriptableObject
     public void InitializeValues()
     {
         Money = PlayerPrefs.GetFloat("Money");
-       
-        onMoneyChanged.Raise(((float)Money));
     }
     
 
@@ -60,7 +37,6 @@ public class EconomyManager : ScriptableObject
     public void SetTotalMoney(double amount)
     {
         TotalMoney = amount;
-        onTotalMoneyIncreased.Raise((float)TotalMoney);
         
         SaveData();
     }
@@ -69,32 +45,16 @@ public class EconomyManager : ScriptableObject
     {
         TotalMoney += amount;
             PlayerPrefs.SetFloat("TotalMoney", (float)TotalMoney);
-        
-        
-
-        onTotalMoneyIncreased.Raise((float)TotalMoney);
-        
-        
     }
    
 
-    // Set our balance to a specific amount]
+    // Set our balance to a specific amount
     public void SetMoney(double amount)
     {
 
         Money = amount;
-            PlayerPrefs.SetFloat("Money", (float)Money);
-       
-
-        if (m_onMoneyChanged != null)
-            m_onMoneyChanged.Invoke(Money);
-
-        onMoneyChanged.Raise(((float)Money));
-
-       
-        
-    }
-    
+            PlayerPrefs.SetFloat("Money", (float)Money);        
+    }   
 
     public void AddMoney(float a)
     {
@@ -104,9 +64,7 @@ public class EconomyManager : ScriptableObject
     public void SpendMoney(float a)
     {
         ReduceMoney((double)Mathf.Round(a));
-    }
-
-    
+    }  
     
     public void AddMoney(double amount, bool addTotal = true)
     {
@@ -116,7 +74,6 @@ public class EconomyManager : ScriptableObject
     
     }
     
-
     public void ReduceMoney(double amount)
     {
         Money -= amount;
@@ -126,16 +83,7 @@ public class EconomyManager : ScriptableObject
             {
                 Money = 0;
                 PlayerPrefs.SetFloat("Money", (float)Money);
-            }
-
-
-        // Tell other scripts our balance has changed
-        if (m_onMoneyChanged != null)
-            m_onMoneyChanged(Money);
-        onMoneyChanged?.Raise(((float)Money));
-
-     
-        
+            }        
     }
     
 
@@ -145,8 +93,6 @@ public class EconomyManager : ScriptableObject
 
         PlayerPrefs.SetString("Money", Money.ToString());
         PlayerPrefs.SetString("TotalMoney", TotalMoney.ToString());
-            
-        
     }
 }
 

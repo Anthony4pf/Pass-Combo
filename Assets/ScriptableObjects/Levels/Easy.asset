@@ -12,7 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f22ef71277d124546965b6177802609a, type: 3}
   m_Name: Easy
   m_EditorClassIdentifier: 
+  difficultyTier: 0
   targetDuration: 1.5
+  targetPoints: 10
   numberOfTeammates: 4
   penalty: 0
   scoreIncrement: 1
