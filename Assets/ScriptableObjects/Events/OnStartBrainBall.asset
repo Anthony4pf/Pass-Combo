@@ -9,17 +9,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f22ef71277d124546965b6177802609a, type: 3}
-  m_Name: Hard
+  m_Script: {fileID: 11500000, guid: afde042156902ab4b9521d2a74eb2466, type: 3}
+  m_Name: OnStartBrainBall
   m_EditorClassIdentifier: 
-  difficultyTier: 2
-  targetDuration: 0.7
-  targetPoints: 10
-  numberOfTeammates: 6
-  penalty: 1
-  scoreIncrement: 1
-  radius: 5
-  hasComboBonus: 1
-  hasComboPatterns: 1
-  comboPasses: 5
-  comboBonus: 4
+  OnRaise:
+    m_PersistentCalls:
+      m_Calls: []

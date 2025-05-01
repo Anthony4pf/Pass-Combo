@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f22ef71277d124546965b6177802609a, type: 3}
   m_Name: Medium
   m_EditorClassIdentifier: 
-  difficultyTier: 0
+  difficultyTier: 1
   targetDuration: 1
   targetPoints: 10
   numberOfTeammates: 6

@@ -5,6 +5,7 @@ using UnityEngine.Events;
 using System;
 using Random = UnityEngine.Random;
 using UnityEngine.EventSystems;
+using TMPro;
 
 public class GameController : MonoBehaviour
 {
@@ -38,6 +39,25 @@ public class GameController : MonoBehaviour
     private float timeRemaining;
     private bool gameActive = false;
     private bool gamePaused = false;
+
+    private List<int[]> hardComboPatterns = new List<int[]>
+    {
+        new int[] {0, 1, 0, 2},
+        new int[] {1, 2, 3, 1},
+        new int[] {2, 0, 3, 2}
+    };
+    private int[] currentComboPattern = null;
+    private int comboPatternStep = 0;
+    private int comboPatternAttempts = 0;
+    private bool isComboPatternActive = false;
+    private const int maxComboPatternAttempts = 4;
+    private bool comboPatternUsedThisLevel = false;
+    private Coroutine comboTimerCoroutine;
+    [SerializeField] private GameEvent OnStartBrainBall;
+    [SerializeField] private GameEvent OnEndBrainBall;
+    [SerializeField] private TextMeshProUGUI brainBallTimerText;
+    [SerializeField] private TextMeshProUGUI captionText;
+
 
     // Static events for UI updates
     public delegate void EndGameDataHandler(int finalPoints, int comboBonus, float averageReactionTime, int targetPoints, bool isWin);
@@ -74,6 +94,7 @@ public class GameController : MonoBehaviour
 
         timeRemaining = gameDuration;
         gameActive = true;
+        comboPatternUsedThisLevel = false;
         StartCoroutine(GameTimer());
     }
 
@@ -152,10 +173,17 @@ public class GameController : MonoBehaviour
     {
         if (!gameActive) return;
 
-        //Reset the previous Target
+        // Reset the previous Target
         if (currentTarget != null)
-        {
             currentTarget.ResetHighlight();
+
+        if (difficultySO.HasComboPatterns && !isComboPatternActive && !comboPatternUsedThisLevel
+            && Random.value < 0.3f && timeRemaining > 8f)
+        {
+            comboPatternUsedThisLevel = true;
+            int[] pattern = hardComboPatterns[Random.Range(0, hardComboPatterns.Count)];
+            StartCoroutine(PreviewComboPattern(pattern));
+            return;
         }
 
         int randomIndex;
@@ -163,12 +191,65 @@ public class GameController : MonoBehaviour
             randomIndex = Random.Range(0, teammates.Count);
         } while (randomIndex == lastTargetIndex && teammates.Count > 1);
         lastTargetIndex = randomIndex;
-        currentTarget = teammates[randomIndex];
+        SetCurrentTarget(randomIndex);
+    }
+
+    private IEnumerator PreviewComboPattern(int[] pattern)
+    {
+        Debug.Log("Combo Pattern Active: " + string.Join(", ", pattern));
+        isComboPatternActive = true;
+        currentComboPattern = pattern;
+        comboPatternStep = 0;
+        comboPatternAttempts = 0;
+
+        OnStartBrainBall?.Raise();
+
+        // Preview each teammate in the pattern
+        yield return new WaitForSeconds(0.2f);
+        foreach (int idx in pattern)
+        {
+            teammates[idx].Highlight();
+            yield return new WaitForSeconds(0.5f);
+            teammates[idx].ResetHighlight();
+            yield return new WaitForSeconds(0.2f);
+        }
+
+        // Start combo timer
+        if (comboTimerCoroutine != null)
+            StopCoroutine(comboTimerCoroutine);
+        comboTimerCoroutine = StartCoroutine(ComboPatternTimer(5f));
+    }
+
+    private IEnumerator ComboPatternTimer(float timeLimit)
+    {
+        brainBallTimerText.gameObject.SetActive(true);
+        Debug.Log("Start Deadzone Timer");
+        float timeLeft = timeLimit;
+        while (timeLeft > 0 && isComboPatternActive)
+        {
+            int minutes = Mathf.FloorToInt(timeLeft / 60f);
+            int seconds = Mathf.FloorToInt(timeLeft % 60f);
+            brainBallTimerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+            yield return null;
+            timeLeft -= Time.deltaTime;
+        }
+        brainBallTimerText.text = "00:00";
+        if (isComboPatternActive)
+        {
+            // Time ran out
+            EndComboPattern(false);
+        }
+    }
+
+    private void SetCurrentTarget(int index)
+    {
+        if (currentTarget != null)
+            currentTarget.ResetHighlight();
+
+        currentTarget = teammates[index];
         currentTarget.Highlight();
         isWaitingForNextTarget = false;
         reactionStartTime = Time.time;
-
-        //update UI with latest score
         OnScoreChanged?.Invoke(score);
     }
 
@@ -179,7 +260,7 @@ public class GameController : MonoBehaviour
             return;
 
         if (!gameActive || isWaitingForNextTarget) return;
-        
+
         Vector3 worldPosition = Camera.main.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, Camera.main.nearClipPlane));
         worldPosition.z = ball.transform.position.z;
 
@@ -199,27 +280,62 @@ public class GameController : MonoBehaviour
 
         StartCoroutine(MoveBallToTarget(worldPosition));
 
+        // --- Combo Pattern Input ---
+        if (isComboPatternActive && currentComboPattern != null)
+        {
+            int tappedIndex = teammates.IndexOf(tappedTeammate);
+            comboPatternAttempts++;
+
+            if (tappedTeammate != null && closestDistance <= maxTapDistance &&
+                tappedIndex == currentComboPattern[comboPatternStep])
+            {
+                // Correct tap for this step
+                float reactionTime = Time.time - reactionStartTime;
+                totalReactionTime += reactionTime;
+                reactionCount++;
+                averageReactionTime = totalReactionTime / reactionCount;
+
+                comboPatternStep++;
+                if (comboPatternStep >= currentComboPattern.Length)
+                {
+                    // Pattern complete!
+                    Debug.Log("Pattern complete!");
+                    score += difficultySO.ComboBonus * 3;
+                    EndComboPattern(true);
+                }
+            }
+            else
+            {
+                // Incorrect tap or missed
+                Debug.Log("Incorrect tap or missed! Pattern Over");
+                EndComboPattern(false);
+            }
+
+            if (comboPatternAttempts >= maxComboPatternAttempts && comboPatternStep < currentComboPattern.Length)
+            {
+                // Out of attempts
+                EndComboPattern(false);
+            }
+            return;
+        }
+
+        // --- Normal pass logic ---
         if (tappedTeammate != null && closestDistance <= maxTapDistance)
         {
             // Tapped near a teammate
             if (tappedTeammate == currentTarget)
             {
                 float reactionTime = Time.time - reactionStartTime;
-                Debug.Log("Correct pass! Reaction time: " + reactionTime + " seconds");
                 score += difficultySO.ScoreIncrement;
-
-                // Track reaction time
                 totalReactionTime += reactionTime;
                 reactionCount++;
                 averageReactionTime = totalReactionTime / reactionCount;
                 streak++;
 
-                //Track Combo Streak
                 if (difficultySO.HasComboBonus && streak >= difficultySO.ComboPasses)
                 {
-                    comboBonus += difficultySO.ComboBonus; // Add combo bonus
-                    streak = 0; // Reset streak
-                    Debug.Log("Combo bonus awarded! Current combo bonus: " + comboBonus);
+                    comboBonus += difficultySO.ComboBonus;
+                    streak = 0;
                 }
             }
             else
@@ -227,7 +343,6 @@ public class GameController : MonoBehaviour
                 score -= difficultySO.Penalty;
                 if (score < 0) score = 0;
                 streak = 0;
-                Debug.Log("Incorrect pass! Score: " + score);
             }
         }
         else
@@ -236,8 +351,42 @@ public class GameController : MonoBehaviour
             score -= difficultySO.Penalty;
             if (score < 0) score = 0;
             streak = 0;
-            Debug.Log("Missed! No teammate at tapped position. Score: " + score);
         }
+        OnScoreChanged?.Invoke(score);
+    }
+
+    private void EndComboPattern(bool success)
+    {
+        Debug.Log("End Combo Pattern: " + success);
+        if (comboTimerCoroutine != null)
+            StopCoroutine(comboTimerCoroutine);
+        comboTimerCoroutine = null;
+        brainBallTimerText.gameObject.SetActive(false);
+        isComboPatternActive = false;
+        currentComboPattern = null;
+        comboPatternStep = 0;
+        comboPatternAttempts = 0;
+
+        if (success)
+        {
+            score += difficultySO.ScoreIncrement * 5;
+            captionText.text = "Tiki-Taka King!";
+        }
+        else
+        {
+            score -= difficultySO.Penalty * 2;
+            if (score < 0) score = 0;
+            captionText.text = "Captain Clueless!";
+        }
+
+        Timer.Register(.3f, () =>
+        {
+            OnScoreChanged?.Invoke(score);
+
+            // Resume normal play
+            OnEndBrainBall?.Raise();
+            SelectRandomTarget();
+        });
     }
 
     private IEnumerator MoveBallToTarget(Vector3 targetPosition)
