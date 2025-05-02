@@ -139,6 +139,8 @@ public class GameController : MonoBehaviour
         if (score >= targetPoints)
         {
             GameStateManager.LevelManager.CurrentLevel++;
+            if (LeaderboardManager.Instance != null)
+                LeaderboardManager.Instance.SubmitScore(GameStateManager.LevelManager.CurrentLevel);
             OnGameEnd?.Invoke(score, comboBonus, averageReactionTime, targetPoints, true);
         }
         else
@@ -164,6 +166,7 @@ public class GameController : MonoBehaviour
             teammates.Add(teammate.GetComponent<TeamMate>());
         }
 
+        
         Timer.Register(1f, () => {
             SelectRandomTarget();
         });

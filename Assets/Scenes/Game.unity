@@ -6798,7 +6798,7 @@ PrefabInstance:
     - target: {fileID: 1932551496568212863, guid: 15db6ab9aaf1ce0429ec6b9d7470d4f5, type: 3}
       propertyPath: difficultySO
       value: 
-      objectReference: {fileID: 11400000, guid: 7eeed3a5672e7e54cb75564004bf10a5, type: 2}
+      objectReference: {fileID: 11400000, guid: 2f7fcd84d3a89a84681b8637c1100c95, type: 2}
     - target: {fileID: 1932551496568212863, guid: 15db6ab9aaf1ce0429ec6b9d7470d4f5, type: 3}
       propertyPath: OnEndDeadzone
       value: 
