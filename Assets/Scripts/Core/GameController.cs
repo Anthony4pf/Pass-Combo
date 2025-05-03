@@ -101,7 +101,6 @@ public class GameController : MonoBehaviour
 
     private void ShowLevelBannerAndSelectTarget()
     {
-        levelBanner.anchoredPosition = new Vector2(levelBanner.anchoredPosition.x, 700f);
         levelBanner.gameObject.SetActive(true);
 
         LeanTween.moveY(levelBanner, 0f, 0.4f).setEase(LeanTweenType.easeOutCubic).setOnComplete(() =>
@@ -144,7 +143,7 @@ public class GameController : MonoBehaviour
 
     private void Update()
     {
-        if (currentTarget != null && !isWaitingForNextTarget && gameActive)
+        if (currentTarget != null && !isWaitingForNextTarget && !isComboPatternActive && gameActive)
         {
             targetTime += Time.deltaTime;
             if (targetTime >= difficultySO.TargetDuration)
@@ -281,7 +280,19 @@ public class GameController : MonoBehaviour
     {
         // Prevent ball movement if tap is over a UI element
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-            return;
+        {
+            // Raycast all UI under the pointer
+            PointerEventData pointerData = new PointerEventData(EventSystem.current)
+            {
+                position = screenPosition
+            };
+            var results = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(pointerData, results);
+
+            // Allow if any UI under pointer has the allowed tag
+            if (!results.Exists(r => r.gameObject.CompareTag("AllowUIClick")))
+                return;
+        }
 
         if (!gameActive || isWaitingForNextTarget) return;
 
@@ -448,7 +459,8 @@ public class GameController : MonoBehaviour
         ball.transform.position = startPosition;
 
         targetTime = 0f;
-        SelectRandomTarget();
+        if (!isComboPatternActive)
+            SelectRandomTarget();
     }
 
     private IEnumerator FlipPlayer(bool faceLeft)

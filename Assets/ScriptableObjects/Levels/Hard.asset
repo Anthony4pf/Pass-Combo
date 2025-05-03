@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Hard
   m_EditorClassIdentifier: 
   difficultyTier: 2
-  targetDuration: 0.7
+  targetDuration: 0.8
   targetPoints: 10
   numberOfTeammates: 6
   penalty: 1
