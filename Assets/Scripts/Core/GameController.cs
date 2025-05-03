@@ -13,6 +13,8 @@ public class GameController : MonoBehaviour
     [SerializeField] private DifficultySO difficultySO;
     [SerializeField] private GameObject ball;
     [SerializeField] private GameObject teammatePrefab;
+    
+    [SerializeField] private RectTransform levelBanner;
 
     [SerializeField] private float waitForFeedbackDelay = 0.2f;
     private Vector3 ballOriginalPosition; 
@@ -95,9 +97,28 @@ public class GameController : MonoBehaviour
         timeRemaining = gameDuration;
         gameActive = true;
         comboPatternUsedThisLevel = false;
-        StartCoroutine(GameTimer());
     }
 
+    private void ShowLevelBannerAndSelectTarget()
+    {
+        levelBanner.anchoredPosition = new Vector2(levelBanner.anchoredPosition.x, 700f);
+        levelBanner.gameObject.SetActive(true);
+
+        LeanTween.moveY(levelBanner, 0f, 0.4f).setEase(LeanTweenType.easeOutCubic).setOnComplete(() =>
+        {
+            // Wait for a moment, then move it back up
+            LeanTween.delayedCall(0.6f, () =>
+            {
+                LeanTween.moveY(levelBanner, 700f, 0.4f).setEase(LeanTweenType.easeInCubic).setOnComplete(() =>
+                {
+                    levelBanner.gameObject.SetActive(false);
+                    AudioManager.Instance?.PlaySFX("Whistle");
+                    StartCoroutine(GameTimer());
+                    SelectRandomTarget();
+                });
+            });
+        });
+    }
     private IEnumerator GameTimer()
     {
         while (timeRemaining > 0f)
@@ -115,6 +136,7 @@ public class GameController : MonoBehaviour
         gameActive = false;
 
         //play full time whistle sfx
+        AudioManager.Instance?.PlaySFX("Whistle");
         yield return new WaitForSeconds(1f);
 
         EndGame();
@@ -166,10 +188,7 @@ public class GameController : MonoBehaviour
             teammates.Add(teammate.GetComponent<TeamMate>());
         }
 
-        
-        Timer.Register(1f, () => {
-            SelectRandomTarget();
-        });
+        ShowLevelBannerAndSelectTarget();
     }
 
     private void SelectRandomTarget()
@@ -181,7 +200,7 @@ public class GameController : MonoBehaviour
             currentTarget.ResetHighlight();
 
         if (difficultySO.HasComboPatterns && !isComboPatternActive && !comboPatternUsedThisLevel
-            && Random.value < 0.3f && timeRemaining > 8f)
+            && /*Random.value < 0.3f &&*/ timeRemaining > 8f)
         {
             comboPatternUsedThisLevel = true;
             int[] pattern = hardComboPatterns[Random.Range(0, hardComboPatterns.Count)];
@@ -196,6 +215,7 @@ public class GameController : MonoBehaviour
         lastTargetIndex = randomIndex;
         SetCurrentTarget(randomIndex);
     }
+
 
     private IEnumerator PreviewComboPattern(int[] pattern)
     {
@@ -228,6 +248,7 @@ public class GameController : MonoBehaviour
         brainBallTimerText.gameObject.SetActive(true);
         Debug.Log("Start Deadzone Timer");
         float timeLeft = timeLimit;
+        isWaitingForNextTarget = false;
         while (timeLeft > 0 && isComboPatternActive)
         {
             int minutes = Mathf.FloorToInt(timeLeft / 60f);
@@ -299,11 +320,11 @@ public class GameController : MonoBehaviour
                 averageReactionTime = totalReactionTime / reactionCount;
 
                 comboPatternStep++;
+                AudioManager.Instance?.PlaySFX("CorrectPass");
                 if (comboPatternStep >= currentComboPattern.Length)
                 {
                     // Pattern complete!
                     Debug.Log("Pattern complete!");
-                    score += difficultySO.ComboBonus * 3;
                     EndComboPattern(true);
                 }
             }
@@ -311,6 +332,7 @@ public class GameController : MonoBehaviour
             {
                 // Incorrect tap or missed
                 Debug.Log("Incorrect tap or missed! Pattern Over");
+                AudioManager.Instance?.PlaySFX("WrongPass");
                 EndComboPattern(false);
             }
 
@@ -334,6 +356,7 @@ public class GameController : MonoBehaviour
                 reactionCount++;
                 averageReactionTime = totalReactionTime / reactionCount;
                 streak++;
+                AudioManager.Instance?.PlaySFX("CorrectPass");
 
                 if (difficultySO.HasComboBonus && streak >= difficultySO.ComboPasses)
                 {
@@ -346,6 +369,7 @@ public class GameController : MonoBehaviour
                 score -= difficultySO.Penalty;
                 if (score < 0) score = 0;
                 streak = 0;
+                AudioManager.Instance?.PlaySFX("WrongPass");
             }
         }
         else
@@ -354,6 +378,7 @@ public class GameController : MonoBehaviour
             score -= difficultySO.Penalty;
             if (score < 0) score = 0;
             streak = 0;
+            AudioManager.Instance?.PlaySFX("WrongPass");
         }
         OnScoreChanged?.Invoke(score);
     }
@@ -382,7 +407,7 @@ public class GameController : MonoBehaviour
             captionText.text = "Captain Clueless!";
         }
 
-        Timer.Register(.3f, () =>
+        Timer.Register(.5f, () =>
         {
             OnScoreChanged?.Invoke(score);
 
@@ -395,7 +420,7 @@ public class GameController : MonoBehaviour
     private IEnumerator MoveBallToTarget(Vector3 targetPosition)
     {
         isWaitingForNextTarget = true;
-
+        AudioManager.Instance?.PlaySFX("KickBall");
         bool isLeftPass = targetPosition.x < ballOriginalPosition.x;
 
         // Flip the player to face the direction of the pass

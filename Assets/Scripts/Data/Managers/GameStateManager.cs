@@ -2,8 +2,6 @@ using UnityEditor;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "Managers/GameState Manager")]
-
-
 public class GameStateManager : SingletonScriptableObject<GameStateManager>
 {
     [FancyHeader("GAMESTATE MANAGER", 3f, "#D4AF37", 8.5f, order = 0)]
@@ -17,14 +15,12 @@ public class GameStateManager : SingletonScriptableObject<GameStateManager>
 
     [HeaderAttribute("Managers")]
     [SerializeField] private ApplicationManager m_applicationManager;
-    private ApplicationManager m_saveApplicationManager;
 
     [SerializeField] private EconomyManager m_economyManager;
-    private EconomyManager m_saveEconomyManager;
-
 
     [SerializeField] private LevelManager m_levelManager;
-    private LevelManager m_saveLevelManager;
+    [SerializeField] private SFXManager m_sfxManager;
+
 
 
     public static EconomyManager EconomyManager
@@ -40,6 +36,11 @@ public class GameStateManager : SingletonScriptableObject<GameStateManager>
     public static ApplicationManager ApplicationManager
     {
         get { return Instance.m_applicationManager; }
+    }
+
+    public static SFXManager SFXManager
+    {
+        get { return Instance.m_sfxManager; }
 
     }
 

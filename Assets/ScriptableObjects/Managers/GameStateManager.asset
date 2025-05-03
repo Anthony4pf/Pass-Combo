@@ -18,3 +18,4 @@ MonoBehaviour:
   m_applicationManager: {fileID: 11400000, guid: 59eb16bfee1f4f448bc7795aa54f8dad, type: 2}
   m_economyManager: {fileID: 11400000, guid: 279121aa57815d441919ea33c6d7b86d, type: 2}
   m_levelManager: {fileID: 11400000, guid: 8bff51c769cdd944591e6d555bd40e7d, type: 2}
+  m_sfxManager: {fileID: 11400000, guid: 1d004d9843dae2642b5dc9c7949800d3, type: 2}

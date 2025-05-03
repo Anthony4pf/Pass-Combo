@@ -64,10 +64,12 @@ public class UIManager : MonoBehaviour
         {
             UpdateStars(finalPoints, targetPoints);
             OnGameWin?.Raise();
+            AudioManager.Instance?.PlaySFX("Win");
         }
         else
         {
             onGameLose?.Raise();
+            AudioManager.Instance?.PlaySFX("Fail");
         }
     }
 
