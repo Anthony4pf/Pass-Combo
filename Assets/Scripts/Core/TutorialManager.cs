@@ -49,6 +49,7 @@ public class TutorialManager : MonoBehaviour
         yield return new WaitForSeconds(2f);
 
         brainBallObj.transform.SetParent(originalParent);
+        brainBallObj.transform.SetAsFirstSibling();
         m_tutorialPanel.SetActive(false);
     }
 }

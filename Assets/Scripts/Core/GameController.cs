@@ -25,6 +25,7 @@ public class GameController : MonoBehaviour
     [SerializeField] private DifficultySO difficultySO;
     [SerializeField] private GameObject ball;
     [SerializeField] private GameObject teammatePrefab;
+    [SerializeField] private List<Sprite> teammateSprites = new List<Sprite>();
     [SerializeField]private GameState gameState = GameState.Inactive;
     [SerializeField] bool playTutorial;
     
@@ -148,7 +149,7 @@ public class GameController : MonoBehaviour
         }
     }
 
-    private void SpawnTeammates()
+   private void SpawnTeammates()
     {
         Vector3 center = transform.position;
         for (int i = 0; i < difficultySO.NumberOfTeammates; i++)
@@ -156,6 +157,12 @@ public class GameController : MonoBehaviour
             float angle = i * Mathf.PI * 2 / difficultySO.NumberOfTeammates;
             Vector3 teammatePosition = new Vector3(Mathf.Cos(angle) * difficultySO.Radius, Mathf.Sin(angle) * difficultySO.Radius, 0f);
             GameObject teammate = Instantiate(teammatePrefab, center + teammatePosition, Quaternion.identity, transform.parent);
+
+            SpriteRenderer sr = teammate.GetComponent<SpriteRenderer>();
+            if (sr != null && teammateSprites != null && teammateSprites.Count > 0)
+            {
+                sr.sprite = teammateSprites[Random.Range(0, teammateSprites.Count)];
+            }
 
             // Rotate to face the center
             Vector3 directionToCenter = (center - teammate.transform.position).normalized;
@@ -208,6 +215,7 @@ public class GameController : MonoBehaviour
             yield return StartCoroutine(tutorialManager.PointsTutorial());
         }
 
+        yield return new WaitForSeconds(0.5f);
         gameState = GameState.Playing;
         StartCoroutine(GameTimer());
         SelectRandomTarget();
@@ -481,15 +489,33 @@ public class GameController : MonoBehaviour
         GameState currentState = gameState;
         gameState = GameState.Inactive;
         AudioManager.Instance?.PlaySFX("KickBall");
-        bool isLeftPass = targetPosition.x < ballOriginalPosition.x;
 
         // Flip the player to face the direction of the pass
-        StartCoroutine(FlipPlayer(isLeftPass));
+        StartCoroutine(FlipPlayer(targetPosition));
 
         // Set ball start position based on direction
-        Vector3 startPosition = isLeftPass
-            ? new Vector3(-Mathf.Abs(ballOriginalPosition.x), ballOriginalPosition.y, ballOriginalPosition.z)
-            : ballOriginalPosition;
+        Vector3 dir = (targetPosition - ballOriginalPosition).normalized;
+        float absX = Mathf.Abs(dir.x);
+        float absY = Mathf.Abs(dir.y);
+
+        Vector3 startPosition = ballOriginalPosition;
+
+        if (absX >= absY)
+        {
+            // Horizontal pass
+            if (dir.x < 0)
+                startPosition = new Vector3(-Mathf.Abs(ballOriginalPosition.x), ballOriginalPosition.y, ballOriginalPosition.z); // Left
+            else
+                startPosition = new Vector3(Mathf.Abs(ballOriginalPosition.x), ballOriginalPosition.y, ballOriginalPosition.z);  // Right
+        }
+        else
+        {
+            // Vertical pass
+            if (dir.y > 0)
+                startPosition = new Vector3(0, 0.6f, ballOriginalPosition.z);   // Up
+            else
+                startPosition = new Vector3(0, -0.6f, ballOriginalPosition.z);  // Down
+        }
 
         float duration = 0.3f;
         float elapsed = 0f;
@@ -514,22 +540,51 @@ public class GameController : MonoBehaviour
             SelectRandomTarget();
     }
 
-    private IEnumerator FlipPlayer(bool faceLeft)
+    private IEnumerator FlipPlayer(Vector3 targetPosition)
     {
         float duration = 0.1f;
         float elapsed = 0f;
+
+        Vector3 dir = (targetPosition - ballOriginalPosition).normalized;
+        float absX = Mathf.Abs(dir.x);
+        float absY = Mathf.Abs(dir.y);
+
         float startScaleX = transform.localScale.x;
-        float endScaleX = faceLeft ? -Mathf.Abs(startScaleX) : Mathf.Abs(startScaleX);
+        float endScaleX = Mathf.Abs(startScaleX);
+        float startRotZ = transform.eulerAngles.z;
+        float endRotZ = 0f;
+
+        if (absX >= absY)
+        {
+            // Horizontal pass
+            if (dir.x < 0)
+                endScaleX = -Mathf.Abs(startScaleX); // Left
+            else
+                endScaleX = Mathf.Abs(startScaleX);  // Right
+            endRotZ = 0f;
+        }
+        else
+        {
+            // Vertical pass
+            endScaleX = Mathf.Abs(startScaleX); // No flip
+            if (dir.y > 0)
+                endRotZ = 90f;   // Up
+            else
+                endRotZ = -90f;  // Down
+        }
 
         while (elapsed < duration)
         {
             float t = elapsed / duration;
             float newScaleX = Mathf.Lerp(startScaleX, endScaleX, t);
+            float newRotZ = Mathf.LerpAngle(startRotZ, endRotZ, t);
             transform.localScale = new Vector3(newScaleX, transform.localScale.y, transform.localScale.z);
+            transform.rotation = Quaternion.Euler(0, 0, newRotZ);
             elapsed += Time.deltaTime;
             yield return null;
         }
         transform.localScale = new Vector3(endScaleX, transform.localScale.y, transform.localScale.z);
+        transform.rotation = Quaternion.Euler(0, 0, endRotZ);
     }
 
     public void PauseGame()

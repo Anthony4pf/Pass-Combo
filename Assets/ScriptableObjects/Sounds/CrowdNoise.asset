@@ -15,4 +15,4 @@ MonoBehaviour:
   soundName: CrowdNoise
   clip: {fileID: 8300000, guid: fdda541389a9cd24098d1f9285c645d2, type: 3}
   volume: 1
-  pitch: 1
+  pitch: 2

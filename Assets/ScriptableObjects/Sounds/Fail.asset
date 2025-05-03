@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Fail
   m_EditorClassIdentifier: 
   soundName: Fail
-  clip: {fileID: 8300000, guid: c021c5236c418e641a1b3501b2f87724, type: 3}
+  clip: {fileID: 8300000, guid: 10b6fa32a18924c4fb6184d8290f0d65, type: 3}
   volume: 1
   pitch: 1
