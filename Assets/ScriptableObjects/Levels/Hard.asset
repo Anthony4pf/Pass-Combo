@@ -17,7 +17,7 @@ MonoBehaviour:
   targetPoints: 10
   numberOfTeammates: 6
   penalty: 1
-  scoreIncrement: 1
+  scoreIncrement: 2
   radius: 5
   hasComboBonus: 1
   hasComboPatterns: 1

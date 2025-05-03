@@ -12,6 +12,7 @@ public class GameController : MonoBehaviour
     public enum GameState
     {
         Inactive,
+        Tutorial,
         Playing,
         Paused,
         PreviewingCombo,
@@ -20,10 +21,12 @@ public class GameController : MonoBehaviour
     }
 
     [SerializeField] private InputReader inputReader;
+    [SerializeField] private TutorialManager tutorialManager;
     [SerializeField] private DifficultySO difficultySO;
     [SerializeField] private GameObject ball;
     [SerializeField] private GameObject teammatePrefab;
     [SerializeField]private GameState gameState = GameState.Inactive;
+    [SerializeField] bool playTutorial;
     
     [SerializeField] private RectTransform levelBanner;
 
@@ -92,17 +95,18 @@ public class GameController : MonoBehaviour
 
     private void Awake()
     {
-        //difficultySO = GameStateManager.LevelManager.GetLevelDifficultyData();
+        difficultySO = GameStateManager.LevelManager.GetLevelDifficultyData();
     }
 
     private void Start()
     {
         ballOriginalPosition = ball.transform.position;
-        SpawnTeammates();
         OnScoreChanged?.Invoke(score);
 
         timeRemaining = gameDuration;
         comboPatternUsedThisLevel = false;
+
+        SpawnTeammates();
     }
 
     private IEnumerator GameTimer()
@@ -112,7 +116,9 @@ public class GameController : MonoBehaviour
             timeRemaining -= Time.deltaTime;
             if (timeRemaining < 0f) timeRemaining = 0f;
             OnTimeChanged?.Invoke(timeRemaining);
-            if (gameState == GameState.Paused) yield return new WaitUntil(() => gameState == GameState.Playing); 
+            if (gameState == GameState.Paused) yield return new WaitUntil(() => gameState == GameState.Playing);
+            if (gameState == GameState.Tutorial)
+                yield return new WaitUntil(() => gameState == GameState.Playing || gameState == GameState.PreviewingCombo);
             yield return null;
         }
         
@@ -139,21 +145,6 @@ public class GameController : MonoBehaviour
                 targetTime = 0f;
                 SelectRandomTarget();
             }
-        }
-    }
-
-    private void EndGame()
-    {
-        if (score >= targetPoints)
-        {
-            GameStateManager.LevelManager.CurrentLevel++;
-            if (LeaderboardManager.Instance != null)
-                LeaderboardManager.Instance.SubmitScore(GameStateManager.LevelManager.CurrentLevel);
-            OnGameEnd?.Invoke(score, comboBonus, averageReactionTime, targetPoints, true);
-        }
-        else
-        {
-            OnGameEnd?.Invoke(score, comboBonus, averageReactionTime, targetPoints, false);
         }
     }
 
@@ -190,12 +181,36 @@ public class GameController : MonoBehaviour
                 {
                     levelBanner.gameObject.SetActive(false);
                     AudioManager.Instance?.PlaySFX("Whistle");
-                    gameState = GameState.Playing;
-                    StartCoroutine(GameTimer());
-                    SelectRandomTarget();
+
+                    StartCoroutine(PrepareGame());
                 });
             });
         });
+    }
+
+    public IEnumerator PrepareGame()
+    {
+        if (!PlayerPrefs.HasKey("HowToPlayTut"))
+        {
+            gameState = GameState.Tutorial;
+
+            // Highlight the first target for the tutorial
+            int tutorialTargetIndex = 0;
+            SetCurrentTarget(tutorialTargetIndex);
+            
+            yield return StartCoroutine(tutorialManager.HowToPlayTutorial());
+
+            // Wait until the player makes the first correct pass
+            yield return new WaitUntil(() => score > 0);
+
+            PlayerPrefs.SetInt("HowToPlayTut", 1);
+
+            yield return StartCoroutine(tutorialManager.PointsTutorial());
+        }
+
+        gameState = GameState.Playing;
+        StartCoroutine(GameTimer());
+        SelectRandomTarget();
     }
 
     private void SelectRandomTarget()
@@ -207,7 +222,7 @@ public class GameController : MonoBehaviour
             currentTarget.ResetHighlight();
 
         if (difficultySO.HasComboPatterns && gameState != GameState.ComboActive && !comboPatternUsedThisLevel
-            && timeRemaining > 8f /*&& Random.value < 0.3*/)
+            && timeRemaining > 8f && Random.value < 0.3)
         {
             comboPatternUsedThisLevel = true;
             int[] pattern = hardComboPatterns[Random.Range(0, hardComboPatterns.Count)];
@@ -226,13 +241,21 @@ public class GameController : MonoBehaviour
     private IEnumerator PreviewComboPattern(int[] pattern)
     {
         Debug.Log("Combo Pattern Active: " + string.Join(", ", pattern));
-        gameState = GameState.PreviewingCombo;
+
         currentComboPattern = pattern;
         comboPatternStep = 0;
         comboPatternAttempts = 0;
 
+        gameState = GameState.Tutorial;
         OnStartBrainBall?.Raise();
 
+        if (!PlayerPrefs.HasKey("BrainBallTut"))
+        {
+            yield return StartCoroutine(tutorialManager.BrainBallTutorial());
+            PlayerPrefs.SetInt("BrainBallTut", 1);
+        }
+
+        gameState = GameState.PreviewingCombo;
         // Preview each teammate in the pattern
         yield return new WaitForSeconds(0.2f);
         foreach (int idx in pattern)
@@ -279,7 +302,8 @@ public class GameController : MonoBehaviour
 
         currentTarget = teammates[index];
         currentTarget.Highlight();
-        gameState = GameState.Playing;
+        if (gameState != GameState.Tutorial)
+            gameState = GameState.Playing;
         reactionStartTime = Time.time;
         OnScoreChanged?.Invoke(score);
     }
@@ -302,7 +326,7 @@ public class GameController : MonoBehaviour
                 return;
         }
 
-        if (gameState != GameState.Playing && gameState != GameState.ComboActive)
+        if (gameState != GameState.Playing && gameState != GameState.ComboActive && gameState != GameState.Tutorial)
             return;
 
         Vector3 worldPosition = Camera.main.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, Camera.main.nearClipPlane));
@@ -404,6 +428,20 @@ public class GameController : MonoBehaviour
         OnScoreChanged?.Invoke(score);
     }
 
+     private void EndGame()
+    {
+        if (score >= targetPoints)
+        {
+            GameStateManager.LevelManager.CurrentLevel++;
+            if (LeaderboardManager.Instance != null)
+                LeaderboardManager.Instance.SubmitScore(GameStateManager.LevelManager.CurrentLevel);
+            OnGameEnd?.Invoke(score, comboBonus, averageReactionTime, targetPoints, true);
+        }
+        else
+        {
+            OnGameEnd?.Invoke(score, comboBonus, averageReactionTime, targetPoints, false);
+        }
+    }
     private void EndComboPattern(bool success)
     {
         Debug.Log("End Combo Pattern: " + success);
@@ -440,10 +478,7 @@ public class GameController : MonoBehaviour
 
     private IEnumerator MoveBallToTarget(Vector3 targetPosition)
     {
-        GameState currentState = (currentComboPattern != null && gameState == GameState.ComboActive)
-            ? GameState.ComboActive
-            : GameState.Playing;
-
+        GameState currentState = gameState;
         gameState = GameState.Inactive;
         AudioManager.Instance?.PlaySFX("KickBall");
         bool isLeftPass = targetPosition.x < ballOriginalPosition.x;
