@@ -9,10 +9,21 @@ using TMPro;
 
 public class GameController : MonoBehaviour
 {
+    public enum GameState
+    {
+        Inactive,
+        Playing,
+        Paused,
+        PreviewingCombo,
+        ComboActive,
+        Ended
+    }
+
     [SerializeField] private InputReader inputReader;
     [SerializeField] private DifficultySO difficultySO;
     [SerializeField] private GameObject ball;
     [SerializeField] private GameObject teammatePrefab;
+    [SerializeField]private GameState gameState = GameState.Inactive;
     
     [SerializeField] private RectTransform levelBanner;
 
@@ -26,7 +37,6 @@ public class GameController : MonoBehaviour
     private float targetTime = 0f;
     private int lastTargetIndex = -1;
     private float maxTapDistance = 1.5f;
-    private bool isWaitingForNextTarget = false;
 
     private int score = 0;
     private int comboBonus;
@@ -39,8 +49,6 @@ public class GameController : MonoBehaviour
     [SerializeField] private float gameDuration = 30f;
 
     private float timeRemaining;
-    private bool gameActive = false;
-    private bool gamePaused = false;
 
     private List<int[]> hardComboPatterns = new List<int[]>
     {
@@ -51,7 +59,6 @@ public class GameController : MonoBehaviour
     private int[] currentComboPattern = null;
     private int comboPatternStep = 0;
     private int comboPatternAttempts = 0;
-    private bool isComboPatternActive = false;
     private const int maxComboPatternAttempts = 4;
     private bool comboPatternUsedThisLevel = false;
     private Coroutine comboTimerCoroutine;
@@ -95,29 +102,9 @@ public class GameController : MonoBehaviour
         OnScoreChanged?.Invoke(score);
 
         timeRemaining = gameDuration;
-        gameActive = true;
         comboPatternUsedThisLevel = false;
     }
 
-    private void ShowLevelBannerAndSelectTarget()
-    {
-        levelBanner.gameObject.SetActive(true);
-
-        LeanTween.moveY(levelBanner, 0f, 0.4f).setEase(LeanTweenType.easeOutCubic).setOnComplete(() =>
-        {
-            // Wait for a moment, then move it back up
-            LeanTween.delayedCall(0.6f, () =>
-            {
-                LeanTween.moveY(levelBanner, 700f, 0.4f).setEase(LeanTweenType.easeInCubic).setOnComplete(() =>
-                {
-                    levelBanner.gameObject.SetActive(false);
-                    AudioManager.Instance?.PlaySFX("Whistle");
-                    StartCoroutine(GameTimer());
-                    SelectRandomTarget();
-                });
-            });
-        });
-    }
     private IEnumerator GameTimer()
     {
         while (timeRemaining > 0f)
@@ -125,14 +112,14 @@ public class GameController : MonoBehaviour
             timeRemaining -= Time.deltaTime;
             if (timeRemaining < 0f) timeRemaining = 0f;
             OnTimeChanged?.Invoke(timeRemaining);
-            if (gamePaused == true) yield return new WaitUntil(() => gamePaused == false); 
+            if (gameState == GameState.Paused) yield return new WaitUntil(() => gameState == GameState.Playing); 
             yield return null;
         }
         
         OnTimeChanged?.Invoke(0);
         if (currentTarget != null)
             currentTarget.ResetHighlight();
-        gameActive = false;
+        gameState = GameState.Ended;
 
         //play full time whistle sfx
         AudioManager.Instance?.PlaySFX("Whistle");
@@ -143,7 +130,7 @@ public class GameController : MonoBehaviour
 
     private void Update()
     {
-        if (currentTarget != null && !isWaitingForNextTarget && !isComboPatternActive && gameActive)
+        if (currentTarget != null && gameState == GameState.Playing)
         {
             targetTime += Time.deltaTime;
             if (targetTime >= difficultySO.TargetDuration)
@@ -190,16 +177,37 @@ public class GameController : MonoBehaviour
         ShowLevelBannerAndSelectTarget();
     }
 
+    private void ShowLevelBannerAndSelectTarget()
+    {
+        levelBanner.gameObject.SetActive(true);
+
+        LeanTween.moveY(levelBanner, 0f, 0.4f).setEase(LeanTweenType.easeOutCubic).setOnComplete(() =>
+        {
+            // Wait for a moment, then move it back up
+            LeanTween.delayedCall(0.6f, () =>
+            {
+                LeanTween.moveY(levelBanner, 700f, 0.4f).setEase(LeanTweenType.easeInCubic).setOnComplete(() =>
+                {
+                    levelBanner.gameObject.SetActive(false);
+                    AudioManager.Instance?.PlaySFX("Whistle");
+                    gameState = GameState.Playing;
+                    StartCoroutine(GameTimer());
+                    SelectRandomTarget();
+                });
+            });
+        });
+    }
+
     private void SelectRandomTarget()
     {
-        if (!gameActive) return;
+        if (gameState != GameState.Playing) return;
 
         // Reset the previous Target
         if (currentTarget != null)
             currentTarget.ResetHighlight();
 
-        if (difficultySO.HasComboPatterns && !isComboPatternActive && !comboPatternUsedThisLevel
-            && /*Random.value < 0.3f &&*/ timeRemaining > 8f)
+        if (difficultySO.HasComboPatterns && gameState != GameState.ComboActive && !comboPatternUsedThisLevel
+            && timeRemaining > 8f /*&& Random.value < 0.3*/)
         {
             comboPatternUsedThisLevel = true;
             int[] pattern = hardComboPatterns[Random.Range(0, hardComboPatterns.Count)];
@@ -215,11 +223,10 @@ public class GameController : MonoBehaviour
         SetCurrentTarget(randomIndex);
     }
 
-
     private IEnumerator PreviewComboPattern(int[] pattern)
     {
         Debug.Log("Combo Pattern Active: " + string.Join(", ", pattern));
-        isComboPatternActive = true;
+        gameState = GameState.PreviewingCombo;
         currentComboPattern = pattern;
         comboPatternStep = 0;
         comboPatternAttempts = 0;
@@ -239,16 +246,17 @@ public class GameController : MonoBehaviour
         // Start combo timer
         if (comboTimerCoroutine != null)
             StopCoroutine(comboTimerCoroutine);
+
         comboTimerCoroutine = StartCoroutine(ComboPatternTimer(5f));
     }
 
     private IEnumerator ComboPatternTimer(float timeLimit)
     {
         brainBallTimerText.gameObject.SetActive(true);
-        Debug.Log("Start Deadzone Timer");
+        Debug.Log("Start BrainBall Timer");
         float timeLeft = timeLimit;
-        isWaitingForNextTarget = false;
-        while (timeLeft > 0 && isComboPatternActive)
+        gameState = GameState.ComboActive;
+        while (timeLeft > 0)
         {
             int minutes = Mathf.FloorToInt(timeLeft / 60f);
             int seconds = Mathf.FloorToInt(timeLeft % 60f);
@@ -257,7 +265,7 @@ public class GameController : MonoBehaviour
             timeLeft -= Time.deltaTime;
         }
         brainBallTimerText.text = "00:00";
-        if (isComboPatternActive)
+        if (gameState == GameState.ComboActive)
         {
             // Time ran out
             EndComboPattern(false);
@@ -271,7 +279,7 @@ public class GameController : MonoBehaviour
 
         currentTarget = teammates[index];
         currentTarget.Highlight();
-        isWaitingForNextTarget = false;
+        gameState = GameState.Playing;
         reactionStartTime = Time.time;
         OnScoreChanged?.Invoke(score);
     }
@@ -294,7 +302,8 @@ public class GameController : MonoBehaviour
                 return;
         }
 
-        if (!gameActive || isWaitingForNextTarget) return;
+        if (gameState != GameState.Playing && gameState != GameState.ComboActive)
+            return;
 
         Vector3 worldPosition = Camera.main.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, Camera.main.nearClipPlane));
         worldPosition.z = ball.transform.position.z;
@@ -313,10 +322,11 @@ public class GameController : MonoBehaviour
             }
         }
 
+        GameState currentState = gameState;
         StartCoroutine(MoveBallToTarget(worldPosition));
 
         // --- Combo Pattern Input ---
-        if (isComboPatternActive && currentComboPattern != null)
+        if (currentState == GameState.ComboActive && currentComboPattern != null)
         {
             int tappedIndex = teammates.IndexOf(tappedTeammate);
             comboPatternAttempts++;
@@ -401,7 +411,7 @@ public class GameController : MonoBehaviour
             StopCoroutine(comboTimerCoroutine);
         comboTimerCoroutine = null;
         brainBallTimerText.gameObject.SetActive(false);
-        isComboPatternActive = false;
+        gameState = GameState.Playing;
         currentComboPattern = null;
         comboPatternStep = 0;
         comboPatternAttempts = 0;
@@ -430,7 +440,11 @@ public class GameController : MonoBehaviour
 
     private IEnumerator MoveBallToTarget(Vector3 targetPosition)
     {
-        isWaitingForNextTarget = true;
+        GameState currentState = (currentComboPattern != null && gameState == GameState.ComboActive)
+            ? GameState.ComboActive
+            : GameState.Playing;
+
+        gameState = GameState.Inactive;
         AudioManager.Instance?.PlaySFX("KickBall");
         bool isLeftPass = targetPosition.x < ballOriginalPosition.x;
 
@@ -459,7 +473,9 @@ public class GameController : MonoBehaviour
         ball.transform.position = startPosition;
 
         targetTime = 0f;
-        if (!isComboPatternActive)
+        gameState = currentState;
+
+        if (gameState != GameState.ComboActive)
             SelectRandomTarget();
     }
 
@@ -483,13 +499,11 @@ public class GameController : MonoBehaviour
 
     public void PauseGame()
     {
-        gameActive = false;
-        gamePaused = true;
+        gameState = GameState.Paused;
     }
 
     public void ResumeGame()
     {
-        gameActive = true;
-        gamePaused = false;
+        gameState = GameState.Playing;
     }
 }
