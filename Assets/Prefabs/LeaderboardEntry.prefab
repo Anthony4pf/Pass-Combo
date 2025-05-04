@@ -515,7 +515,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b824ce3508990084d99347890ceaa867, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerNameText: {fileID: 6490956814974856371}
+  playerNameText: {fileID: 6645200550534009470}
   rankIcon: {fileID: 1997216662749889907}
   playerPosition: {fileID: 8376769206672388344}
   scoreText: {fileID: 6490956814974856371}
@@ -665,7 +665,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Anthony
+  m_text: Name
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 32988849f74a53f419253a21b9f0b174, type: 2}
   m_sharedMaterial: {fileID: -7963438776006922803, guid: 32988849f74a53f419253a21b9f0b174, type: 2}

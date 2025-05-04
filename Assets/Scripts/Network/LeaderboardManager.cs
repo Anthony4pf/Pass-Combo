@@ -456,11 +456,24 @@ private void CustomLogin()
             var rankEntry = Instantiate(leaderboardPrefab, content.transform);
             if (entry.Profile.DisplayName.IsNullOrEmpty())
             {
-                rankEntry.playerNameText.text = entry.DisplayName;
+                string randomName = GenerateRandomName();
+                Debug.Log("Generated Name: " + randomName);
+                rankEntry.playerNameText.text = randomName;
+
+                if (entry.PlayFabId == playfabID)
+                {
+                    var displayNameRequest = new UpdateUserTitleDisplayNameRequest
+                    {
+                        DisplayName = randomName
+                    };
+                    PlayFabClientAPI.UpdateUserTitleDisplayName(displayNameRequest, 
+                        result => Debug.Log("Display name set to: " + randomName), 
+                        error => Debug.LogWarning("Failed to set display name: " + error.GenerateErrorReport()));
+                }
             }
             else
             {
-                GenerateRandomName();
+                rankEntry.playerNameText.text = entry.DisplayName;
             }
             rankEntry.scoreText.text = entry.StatValue.ToString();
             rankEntry.UpdateRank(entry.Position + 1);
