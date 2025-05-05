@@ -1190,7 +1190,6 @@ MonoBehaviour:
   content: {fileID: 554326136}
   Loading: {fileID: 1141954540}
   CheckNetWorkPanel: {fileID: 1503435827}
-  retryInterval: 120
 --- !u!4 &757215286
 Transform:
   m_ObjectHideFlags: 0
@@ -1340,6 +1339,51 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!1 &999251728
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 999251730}
+  - component: {fileID: 999251729}
+  m_Layer: 0
+  m_Name: PlayFabManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &999251729
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 999251728}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: baf6e2c3d2a09824fa4e435e7885f698, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  retryInterval: 360
+--- !u!4 &999251730
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 999251728}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1033398489
 GameObject:
   m_ObjectHideFlags: 0
@@ -2084,7 +2128,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 757215285}
         m_TargetAssemblyTypeName: LeaderboardManager, Assembly-CSharp
-        m_MethodName: FetchLeaderboard
+        m_MethodName: DisplayLeaderboard
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -5035,3 +5079,4 @@ SceneRoots:
   - {fileID: 1672593999}
   - {fileID: 757215286}
   - {fileID: 8675128778768257617}
+  - {fileID: 999251730}

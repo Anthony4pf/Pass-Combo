@@ -126,6 +126,7 @@ public class GameController : MonoBehaviour
         OnTimeChanged?.Invoke(0);
         if (currentTarget != null)
             currentTarget.ResetHighlight();
+
         gameState = GameState.Ended;
 
         //play full time whistle sfx
@@ -441,9 +442,9 @@ public class GameController : MonoBehaviour
         if (score >= targetPoints)
         {
             GameStateManager.LevelManager.CurrentLevel++;
-            if (LeaderboardManager.Instance != null)
-                LeaderboardManager.Instance.SubmitScore(GameStateManager.LevelManager.CurrentLevel);
             OnGameEnd?.Invoke(score, comboBonus, averageReactionTime, targetPoints, true);
+            if (PlayFabManager.Instance != null)
+                PlayFabManager.Instance.SubmitScore(GameStateManager.LevelManager.CurrentLevel);
         }
         else
         {
